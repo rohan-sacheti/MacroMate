@@ -126,3 +126,5 @@ const styles = StyleSheet.create({
   },
   entryText: { flex: 1 },
 });
+
+export default HomeScreen;

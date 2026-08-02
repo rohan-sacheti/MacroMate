@@ -1,129 +1,65 @@
-# MacroMate - Nutrition Tracking App
+# MacroMate
 
-A comprehensive mobile application for tracking macronutrients (protein, carbohydrates, fats) built with React Native and Expo.
+MacroMate is a local-first React Native app for logging food, tracking daily macros, reusing meals, and reviewing nutrition history.
 
-## Features
+## Current features
 
-### Core Features
-- **Food Search & Addition**: Search for foods or add custom food items with nutritional information
-- **Macro Calculator**: Automatically calculates total macros per item and per meal
-- **Meal Management**: Save complete meals for quick reuse
-- **Daily Logging**: Track meals throughout the day with running totals
-- **Progress Tracking**: Visual progress bars showing daily macro goals
-- **Nutrition History**: View past meals and weekly/monthly summaries
+- Material 3 dashboard with calorie and macro progress
+- Breakfast, lunch, dinner, and snack logging
+- Offline starter food catalog and custom food entry
+- SQLite persistence for goals, logs, and saved meals
+- Saved-meal reuse and daily history
+- Validated inputs plus loading, empty, and error states
 
-### User Experience
-- Clean, intuitive interface with Material Design components
-- Quick access to frequently used meals
-- Real-time macro calculations
-- Goal setting and progress visualization
+See [the product requirements](docs/PRD.md) for the product principles, complete roadmap, and open decisions.
 
-## Technology Stack
+## Stack
 
-- **React Native**: Cross-platform mobile development
-- **Expo**: Development platform and build tools
-- **TypeScript**: Type safety and enhanced development experience
-- **React Navigation**: Screen navigation and routing
-- **React Native Paper**: Material Design UI components
-- **Expo SQLite**: Local database for data persistence (planned)
+- Expo 49 and React Native 0.72
+- TypeScript
+- React Navigation
+- React Native Paper
+- Expo SQLite
 
-## Project Structure
+## Run locally
 
-```
-MacroMate/
-├── App.tsx                 # Main app component
-├── src/
-│   ├── screens/           # Screen components
-│   │   ├── HomeScreen.tsx
-│   │   ├── FoodSearchScreen.tsx
-│   │   ├── MealsScreen.tsx
-│   │   ├── HistoryScreen.tsx
-│   │   └── ProfileScreen.tsx
-│   ├── components/        # Reusable UI components
-│   ├── types/            # TypeScript type definitions
-│   └── utils/            # Utility functions
-├── assets/               # Images and static assets
-└── .github/
-    └── copilot-instructions.md
+Prerequisites: a supported Node.js LTS release and an Expo-compatible simulator, emulator, or device.
+
+```bash
+npm install
+npm start
 ```
 
-## Getting Started
+Platform shortcuts:
 
-### Prerequisites
-- Node.js (v14 or higher)
-- npm or yarn
-- Expo CLI
-- iOS Simulator or Android Emulator (for testing)
+```bash
+npm run ios
+npm run android
+npm run web
+```
 
-### Installation
+Validate TypeScript:
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+```bash
+npm run typecheck
+```
 
-3. Start the development server:
-   ```bash
-   npm start
-   ```
+## Project structure
 
-4. Run on your preferred platform:
-   ```bash
-   npm run ios     # Run on iOS simulator
-   npm run android # Run on Android emulator
-   npm run web     # Run in web browser
-   ```
+```text
+App.tsx
+docs/PRD.md
+src/
+  components/
+  context/
+  data/
+  navigation/
+  screens/
+  services/
+  types/
+  utils/
+```
 
-## Development
+## Data and privacy
 
-### Available Scripts
-- `npm start`: Start the Expo development server
-- `npm run android`: Run on Android emulator/device
-- `npm run ios`: Run on iOS simulator/device
-- `npm run web`: Run in web browser
-
-### Development Guidelines
-- Use TypeScript for all new components
-- Follow React Native best practices
-- Use React Native Paper components for consistent UI
-- Implement proper error handling
-- Add comprehensive comments for complex logic
-
-## Planned Features
-
-### Phase 1 (MVP)
-- [x] Basic UI structure with navigation
-- [x] Food search and addition
-- [x] Macro calculation
-- [x] Saved meals functionality
-- [x] Daily progress tracking
-- [ ] Local data persistence with SQLite
-
-### Phase 2
-- [ ] Food database API integration
-- [ ] Advanced meal planning
-- [ ] Nutrition insights and analytics
-- [ ] Export functionality
-
-### Phase 3
-- [ ] User authentication
-- [ ] Cloud data sync
-- [ ] Social features
-- [ ] Meal sharing
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License.
-
-## Contact
-
-For questions or support, please contact [Your Name] at [your.email@example.com].
+The current release stores nutrition data in the app's local SQLite database. It does not require an account or transmit user data. Removing the app may remove its local data until backup and restore are implemented.

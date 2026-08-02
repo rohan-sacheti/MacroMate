@@ -6,7 +6,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
   ActivityIndicator,
-  Button,
   PaperProvider,
   Snackbar,
   Text,
@@ -68,7 +67,7 @@ const AppContent = () => {
       <Snackbar
         visible={Boolean(error)}
         onDismiss={clearError}
-        action={<Button onPress={clearError}>Dismiss</Button>}
+        action={{ label: 'Dismiss', onPress: clearError }}
       >
         {error}
       </Snackbar>
