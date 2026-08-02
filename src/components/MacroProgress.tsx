@@ -1,62 +1,43 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Card, Title, Paragraph, ProgressBar } from 'react-native-paper';
+import { StyleSheet, View } from 'react-native';
+import { ProgressBar, Text } from 'react-native-paper';
+import { clampProgress } from '../utils/calculations';
 
 interface MacroProgressProps {
   label: string;
   current: number;
   goal: number;
-  unit: string;
+  unit?: string;
   color: string;
 }
 
-const MacroProgress: React.FC<MacroProgressProps> = ({ 
-  label, 
-  current, 
-  goal, 
-  unit, 
-  color 
-}) => {
-  const progress = Math.min(current / goal, 1);
-  
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Paragraph style={styles.label}>{label}</Paragraph>
-        <Paragraph style={styles.value}>
-          {current}{unit} / {goal}{unit}
-        </Paragraph>
-      </View>
-      <ProgressBar 
-        progress={progress} 
-        color={color} 
-        style={styles.progressBar}
-      />
+const MacroProgress = ({
+  label,
+  current,
+  goal,
+  unit = 'g',
+  color,
+}: MacroProgressProps) => (
+  <View style={styles.container}>
+    <View style={styles.header}>
+      <Text variant="labelLarge">{label}</Text>
+      <Text variant="bodyMedium">
+        {Math.round(current)}{unit} of {goal}{unit}
+      </Text>
     </View>
-  );
-};
+    <ProgressBar
+      progress={clampProgress(current, goal)}
+      color={color}
+      style={styles.progress}
+      accessibilityLabel={`${label}: ${Math.round(current)} of ${goal}${unit}`}
+    />
+  </View>
+);
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  value: {
-    fontSize: 16,
-  },
-  progressBar: {
-    height: 8,
-    borderRadius: 4,
-  },
+  container: { gap: 8 },
+  header: { flexDirection: 'row', justifyContent: 'space-between' },
+  progress: { height: 9, borderRadius: 5 },
 });
 
 export default MacroProgress;

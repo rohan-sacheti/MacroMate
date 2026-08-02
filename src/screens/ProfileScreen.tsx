@@ -1,172 +1,160 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Card, Title, Paragraph, Button, TextInput } from 'react-native-paper';
+import React, { useEffect, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { Button, Card, Text, TextInput } from 'react-native-paper';
+import { useApp } from '../context/AppContext';
+import { theme } from '../theme';
 import { UserProfile } from '../types';
 
-const ProfileScreen = ({ navigation }: any) => {
-  const [profile, setProfile] = useState<UserProfile>({
-    id: '1',
-    name: 'John Doe',
-    email: 'john@example.com',
-    proteinGoal: 150,
-    carbsGoal: 200,
-    fatsGoal: 65,
-    caloriesGoal: 2000,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  });
+type GoalForm = Record<'proteinGoal' | 'carbsGoal' | 'fatsGoal' | 'caloriesGoal', string>;
 
+const ProfileScreen = () => {
+  const { profile, updateProfile } = useApp();
   const [isEditing, setIsEditing] = useState(false);
+  const [name, setName] = useState(profile?.name ?? '');
+  const [goals, setGoals] = useState<GoalForm>({
+    proteinGoal: String(profile?.proteinGoal ?? ''),
+    carbsGoal: String(profile?.carbsGoal ?? ''),
+    fatsGoal: String(profile?.fatsGoal ?? ''),
+    caloriesGoal: String(profile?.caloriesGoal ?? ''),
+  });
+  const [validationError, setValidationError] = useState('');
 
-  const saveProfile = () => {
-    // TODO: Save to database
-    console.log('Saving profile:', profile);
+  useEffect(() => {
+    if (!profile || isEditing) return;
+    setName(profile.name);
+    setGoals({
+      proteinGoal: String(profile.proteinGoal),
+      carbsGoal: String(profile.carbsGoal),
+      fatsGoal: String(profile.fatsGoal),
+      caloriesGoal: String(profile.caloriesGoal),
+    });
+  }, [isEditing, profile]);
+
+  if (!profile) return null;
+
+  const save = async () => {
+    const values = Object.fromEntries(
+      Object.entries(goals).map(([key, value]) => [key, Number(value)])
+    ) as unknown as Pick<UserProfile, keyof GoalForm>;
+    if (
+      !name.trim() ||
+      Object.values(values).some((value) => !Number.isFinite(value) || value <= 0)
+    ) {
+      setValidationError('Enter a name and goals greater than zero.');
+      return;
+    }
+    try {
+      await updateProfile({
+        ...profile,
+        ...values,
+        name: name.trim(),
+        updatedAt: new Date().toISOString(),
+      });
+      setValidationError('');
+      setIsEditing(false);
+    } catch {
+      // The global error message provides actionable feedback.
+    }
+  };
+
+  const cancel = () => {
+    setName(profile.name);
+    setGoals({
+      proteinGoal: String(profile.proteinGoal),
+      carbsGoal: String(profile.carbsGoal),
+      fatsGoal: String(profile.fatsGoal),
+      caloriesGoal: String(profile.caloriesGoal),
+    });
+    setValidationError('');
     setIsEditing(false);
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title>Profile</Title>
-            <Paragraph>Manage your account and goals</Paragraph>
-          </Card.Content>
-        </Card>
-
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title>Personal Information</Title>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <View>
+        <Text variant="headlineSmall">Your goals</Text>
+        <Text variant="bodyMedium" style={styles.muted}>
+          Personalize the targets shown on Today.
+        </Text>
+      </View>
+      <Card mode="outlined">
+        <Card.Content style={styles.form}>
+          <TextInput
+            label="Display name"
+            value={name}
+            disabled={!isEditing}
+            onChangeText={setName}
+          />
+          <View style={styles.row}>
             <TextInput
-              label="Name"
-              value={profile.name}
-              onChangeText={(text) => setProfile({ ...profile, name: text })}
+              style={styles.flex}
+              label="Protein (g)"
+              value={goals.proteinGoal}
               disabled={!isEditing}
-              style={styles.input}
+              keyboardType="decimal-pad"
+              onChangeText={(proteinGoal) => setGoals({ ...goals, proteinGoal })}
             />
             <TextInput
-              label="Email"
-              value={profile.email || ''}
-              onChangeText={(text) => setProfile({ ...profile, email: text })}
+              style={styles.flex}
+              label="Carbs (g)"
+              value={goals.carbsGoal}
               disabled={!isEditing}
-              style={styles.input}
+              keyboardType="decimal-pad"
+              onChangeText={(carbsGoal) => setGoals({ ...goals, carbsGoal })}
             />
-          </Card.Content>
-        </Card>
-
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title>Daily Goals</Title>
-            <View style={styles.goalRow}>
-              <TextInput
-                label="Protein Goal (g)"
-                value={profile.proteinGoal.toString()}
-                onChangeText={(text) => setProfile({ ...profile, proteinGoal: parseInt(text) || 0 })}
-                disabled={!isEditing}
-                keyboardType="numeric"
-                style={styles.goalInput}
-              />
-              <TextInput
-                label="Carbs Goal (g)"
-                value={profile.carbsGoal.toString()}
-                onChangeText={(text) => setProfile({ ...profile, carbsGoal: parseInt(text) || 0 })}
-                disabled={!isEditing}
-                keyboardType="numeric"
-                style={styles.goalInput}
-              />
-            </View>
-            <View style={styles.goalRow}>
-              <TextInput
-                label="Fats Goal (g)"
-                value={profile.fatsGoal.toString()}
-                onChangeText={(text) => setProfile({ ...profile, fatsGoal: parseInt(text) || 0 })}
-                disabled={!isEditing}
-                keyboardType="numeric"
-                style={styles.goalInput}
-              />
-              <TextInput
-                label="Calories Goal"
-                value={profile.caloriesGoal.toString()}
-                onChangeText={(text) => setProfile({ ...profile, caloriesGoal: parseInt(text) || 0 })}
-                disabled={!isEditing}
-                keyboardType="numeric"
-                style={styles.goalInput}
-              />
-            </View>
-          </Card.Content>
-        </Card>
-
-        <View style={styles.buttonContainer}>
+          </View>
+          <View style={styles.row}>
+            <TextInput
+              style={styles.flex}
+              label="Fats (g)"
+              value={goals.fatsGoal}
+              disabled={!isEditing}
+              keyboardType="decimal-pad"
+              onChangeText={(fatsGoal) => setGoals({ ...goals, fatsGoal })}
+            />
+            <TextInput
+              style={styles.flex}
+              label="Calories"
+              value={goals.caloriesGoal}
+              disabled={!isEditing}
+              keyboardType="decimal-pad"
+              onChangeText={(caloriesGoal) => setGoals({ ...goals, caloriesGoal })}
+            />
+          </View>
+          {validationError ? <Text style={styles.error}>{validationError}</Text> : null}
           {isEditing ? (
-            <View style={styles.buttonRow}>
-              <Button
-                mode="outlined"
-                onPress={() => setIsEditing(false)}
-                style={styles.button}
-              >
-                Cancel
-              </Button>
-              <Button
-                mode="contained"
-                onPress={saveProfile}
-                style={styles.button}
-              >
-                Save
-              </Button>
+            <View style={styles.row}>
+              <Button style={styles.flex} mode="outlined" onPress={cancel}>Cancel</Button>
+              <Button style={styles.flex} mode="contained" onPress={() => void save()}>Save</Button>
             </View>
           ) : (
-            <Button
-              mode="contained"
-              onPress={() => setIsEditing(true)}
-              style={styles.editButton}
-            >
-              Edit Profile
+            <Button mode="contained" icon="pencil-outline" onPress={() => setIsEditing(true)}>
+              Edit profile
             </Button>
           )}
-        </View>
-      </ScrollView>
-    </View>
+        </Card.Content>
+      </Card>
+      <Card mode="contained">
+        <Card.Content style={styles.privacy}>
+          <Text variant="titleMedium">Local-first by default</Text>
+          <Text variant="bodyMedium" style={styles.muted}>
+            Your profile and nutrition log stay in this app's local database. No account or cloud connection is required.
+          </Text>
+        </Card.Content>
+      </Card>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  scrollView: {
-    flex: 1,
-    padding: 16,
-  },
-  card: {
-    marginBottom: 16,
-  },
-  input: {
-    marginBottom: 16,
-  },
-  goalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  goalInput: {
-    flex: 1,
-    marginHorizontal: 4,
-  },
-  buttonContainer: {
-    marginTop: 16,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  button: {
-    flex: 1,
-    marginHorizontal: 4,
-  },
-  editButton: {
-    marginTop: 16,
-  },
+  screen: { flex: 1, backgroundColor: theme.colors.background },
+  content: { padding: 16, paddingBottom: 32, gap: 16 },
+  muted: { color: theme.colors.onSurfaceVariant },
+  form: { gap: 16 },
+  row: { flexDirection: 'row', gap: 12 },
+  flex: { flex: 1 },
+  error: { color: theme.colors.error },
+  privacy: { gap: 6 },
 });
 
 export default ProfileScreen;

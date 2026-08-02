@@ -1,315 +1,198 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { 
-  Card, 
-  Title, 
-  Paragraph, 
-  Button, 
-  TextInput, 
-  Dialog, 
+import React, { useMemo, useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import {
+  Button,
+  Card,
+  Dialog,
+  Divider,
   Portal,
-  List,
-  IconButton,
-  Searchbar
+  Searchbar,
+  SegmentedButtons,
+  Text,
+  TextInput,
 } from 'react-native-paper';
-import { FoodItem } from '../types';
+import { useApp } from '../context/AppContext';
+import { foodCatalog } from '../data/foodCatalog';
+import { RootTabParamList } from '../navigation/types';
+import { theme } from '../theme';
+import { FoodDraft, MealType } from '../types';
+import { calculateCalories } from '../utils/calculations';
 
-const FoodSearchScreen = ({ navigation }: any) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [newFood, setNewFood] = useState({
-    name: '',
-    quantity: '',
-    unit: 'g',
-    protein: '',
-    carbs: '',
-    fats: '',
-    calories: '',
-  });
+type Props = BottomTabScreenProps<RootTabParamList, 'Add'>;
+type DraftForm = Record<'name' | 'quantity' | 'unit' | 'protein' | 'carbs' | 'fats' | 'calories', string>;
 
-  const searchFoods = async (query: string) => {
-    setSearchQuery(query);
-    // TODO: Implement food database search
-    // For now, showing mock data
-    if (query.length > 2) {
-      const mockFoods: FoodItem[] = [
-        {
-          id: '1',
-          name: 'Chicken Breast',
-          quantity: 100,
-          unit: 'g',
-          protein: 31,
-          carbs: 0,
-          fats: 3.6,
-          calories: 165,
-          createdAt: new Date(),
-        },
-        {
-          id: '2',
-          name: 'Brown Rice',
-          quantity: 100,
-          unit: 'g',
-          protein: 2.6,
-          carbs: 77,
-          fats: 0.9,
-          calories: 362,
-          createdAt: new Date(),
-        },
-        {
-          id: '3',
-          name: 'Broccoli',
-          quantity: 100,
-          unit: 'g',
-          protein: 2.8,
-          carbs: 7,
-          fats: 0.4,
-          calories: 34,
-          createdAt: new Date(),
-        },
-      ];
-      setFoodItems(mockFoods.filter(food => 
-        food.name.toLowerCase().includes(query.toLowerCase())
-      ));
-    } else {
-      setFoodItems([]);
+const emptyForm: DraftForm = {
+  name: '',
+  quantity: '100',
+  unit: 'g',
+  protein: '',
+  carbs: '',
+  fats: '',
+  calories: '',
+};
+
+const FoodSearchScreen = ({ navigation }: Props) => {
+  const { addFood } = useApp();
+  const [query, setQuery] = useState('');
+  const [mealType, setMealType] = useState<MealType>('Breakfast');
+  const [form, setForm] = useState(emptyForm);
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [validationError, setValidationError] = useState('');
+
+  const results = useMemo(
+    () =>
+      query.trim().length < 2
+        ? []
+        : foodCatalog.filter((food) =>
+            food.name.toLowerCase().includes(query.trim().toLowerCase())
+          ),
+    [query]
+  );
+
+  const logFood = async (food: FoodDraft) => {
+    try {
+      await addFood(food, mealType);
+      navigation.navigate('Today');
+    } catch {
+      // The global error message provides actionable feedback.
     }
   };
 
-  const addCustomFood = () => {
-    if (newFood.name && newFood.quantity && newFood.protein && newFood.carbs && newFood.fats) {
-      const food: FoodItem = {
-        id: Date.now().toString(),
-        name: newFood.name,
-        quantity: parseFloat(newFood.quantity),
-        unit: newFood.unit,
-        protein: parseFloat(newFood.protein),
-        carbs: parseFloat(newFood.carbs),
-        fats: parseFloat(newFood.fats),
-        calories: newFood.calories ? parseFloat(newFood.calories) : undefined,
-        createdAt: new Date(),
-      };
-      
-      // TODO: Save to database and add to current meal
-      console.log('Adding food:', food);
-      setShowAddDialog(false);
-      resetForm();
+  const submitCustomFood = async () => {
+    const parsed = {
+      name: form.name.trim(),
+      quantity: Number(form.quantity),
+      unit: form.unit.trim(),
+      protein: Number(form.protein),
+      carbs: Number(form.carbs),
+      fats: Number(form.fats),
+      calories: form.calories
+        ? Number(form.calories)
+        : calculateCalories(Number(form.protein), Number(form.carbs), Number(form.fats)),
+    };
+    if (
+      !parsed.name ||
+      !parsed.unit ||
+      !Number.isFinite(parsed.quantity) ||
+      parsed.quantity <= 0 ||
+      [parsed.protein, parsed.carbs, parsed.fats, parsed.calories].some(
+        (value) => !Number.isFinite(value) || value < 0
+      )
+    ) {
+      setValidationError('Enter a name, serving, and non-negative nutrition values.');
+      return;
     }
-  };
-
-  const resetForm = () => {
-    setNewFood({
-      name: '',
-      quantity: '',
-      unit: 'g',
-      protein: '',
-      carbs: '',
-      fats: '',
-      calories: '',
-    });
-  };
-
-  const addFoodToMeal = (food: FoodItem) => {
-    // TODO: Add to current meal or create new meal
-    console.log('Adding to meal:', food);
-    navigation.goBack();
+    setValidationError('');
+    setDialogVisible(false);
+    setForm(emptyForm);
+    await logFood(parsed);
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.searchContainer}>
-        <Searchbar
-          placeholder="Search foods..."
-          onChangeText={searchFoods}
-          value={searchQuery}
-          style={styles.searchBar}
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View>
+          <Text variant="headlineSmall">What did you eat?</Text>
+          <Text variant="bodyMedium" style={styles.muted}>
+            Choose a meal, then search or create a food.
+          </Text>
+        </View>
+        <SegmentedButtons
+          value={mealType}
+          onValueChange={(value) => setMealType(value as MealType)}
+          buttons={[
+            { value: 'Breakfast', label: 'Breakfast' },
+            { value: 'Lunch', label: 'Lunch' },
+            { value: 'Dinner', label: 'Dinner' },
+            { value: 'Snack', label: 'Snack' },
+          ]}
+          density="small"
         />
-        <Button 
-          mode="outlined" 
-          onPress={() => setShowAddDialog(true)}
-          style={styles.addButton}
-        >
-          Add Custom
+        <Searchbar
+          placeholder="Search starter foods"
+          value={query}
+          onChangeText={setQuery}
+          accessibilityLabel="Search foods"
+        />
+        <Button mode="outlined" icon="plus" onPress={() => setDialogVisible(true)}>
+          Create custom food
         </Button>
-      </View>
 
-      <ScrollView style={styles.scrollView}>
-        {foodItems.map((food) => (
-          <Card key={food.id} style={styles.card}>
-            <Card.Content>
-              <View style={styles.foodHeader}>
-                <View style={styles.foodInfo}>
-                  <Title style={styles.foodName}>{food.name}</Title>
-                  <Paragraph>{food.quantity}{food.unit}</Paragraph>
-                </View>
-                <IconButton
-                  icon="plus"
-                  size={24}
-                  onPress={() => addFoodToMeal(food)}
-                />
+        {query.trim().length > 0 && query.trim().length < 2 && (
+          <Text style={styles.muted}>Type at least two characters.</Text>
+        )}
+        {query.trim().length >= 2 && !results.length && (
+          <Card mode="outlined">
+            <Card.Content style={styles.empty}>
+              <Text variant="titleMedium">No starter foods found</Text>
+              <Button onPress={() => setDialogVisible(true)}>Create this food</Button>
+            </Card.Content>
+          </Card>
+        )}
+        {results.map((food) => (
+          <Card key={food.name} mode="outlined">
+            <Card.Content style={styles.result}>
+              <View style={styles.resultText}>
+                <Text variant="titleMedium">{food.name}</Text>
+                <Text variant="bodySmall" style={styles.muted}>
+                  {food.quantity}{food.unit} · P {food.protein}g · C {food.carbs}g · F {food.fats}g
+                </Text>
               </View>
-              
-              <View style={styles.macroGrid}>
-                <View style={styles.macroItem}>
-                  <Paragraph style={styles.macroLabel}>Protein</Paragraph>
-                  <Paragraph style={styles.macroValue}>{food.protein}g</Paragraph>
-                </View>
-                <View style={styles.macroItem}>
-                  <Paragraph style={styles.macroLabel}>Carbs</Paragraph>
-                  <Paragraph style={styles.macroValue}>{food.carbs}g</Paragraph>
-                </View>
-                <View style={styles.macroItem}>
-                  <Paragraph style={styles.macroLabel}>Fats</Paragraph>
-                  <Paragraph style={styles.macroValue}>{food.fats}g</Paragraph>
-                </View>
-                <View style={styles.macroItem}>
-                  <Paragraph style={styles.macroLabel}>Calories</Paragraph>
-                  <Paragraph style={styles.macroValue}>{food.calories || 'N/A'}</Paragraph>
-                </View>
-              </View>
+              <Button mode="contained-tonal" onPress={() => void logFood(food)}>
+                Add
+              </Button>
             </Card.Content>
           </Card>
         ))}
       </ScrollView>
 
       <Portal>
-        <Dialog visible={showAddDialog} onDismiss={() => setShowAddDialog(false)}>
-          <Dialog.Title>Add Custom Food</Dialog.Title>
-          <Dialog.Content>
-            <TextInput
-              label="Food Name"
-              value={newFood.name}
-              onChangeText={(text) => setNewFood({ ...newFood, name: text })}
-              style={styles.input}
-            />
-            <View style={styles.row}>
-              <TextInput
-                label="Quantity"
-                value={newFood.quantity}
-                onChangeText={(text) => setNewFood({ ...newFood, quantity: text })}
-                keyboardType="numeric"
-                style={[styles.input, styles.quantityInput]}
-              />
-              <TextInput
-                label="Unit"
-                value={newFood.unit}
-                onChangeText={(text) => setNewFood({ ...newFood, unit: text })}
-                style={[styles.input, styles.unitInput]}
-              />
-            </View>
-            <View style={styles.row}>
-              <TextInput
-                label="Protein (g)"
-                value={newFood.protein}
-                onChangeText={(text) => setNewFood({ ...newFood, protein: text })}
-                keyboardType="numeric"
-                style={[styles.input, styles.macroInput]}
-              />
-              <TextInput
-                label="Carbs (g)"
-                value={newFood.carbs}
-                onChangeText={(text) => setNewFood({ ...newFood, carbs: text })}
-                keyboardType="numeric"
-                style={[styles.input, styles.macroInput]}
-              />
-            </View>
-            <View style={styles.row}>
-              <TextInput
-                label="Fats (g)"
-                value={newFood.fats}
-                onChangeText={(text) => setNewFood({ ...newFood, fats: text })}
-                keyboardType="numeric"
-                style={[styles.input, styles.macroInput]}
-              />
-              <TextInput
-                label="Calories (optional)"
-                value={newFood.calories}
-                onChangeText={(text) => setNewFood({ ...newFood, calories: text })}
-                keyboardType="numeric"
-                style={[styles.input, styles.macroInput]}
-              />
-            </View>
-          </Dialog.Content>
+        <Dialog visible={dialogVisible} onDismiss={() => setDialogVisible(false)}>
+          <Dialog.Title>Create custom food</Dialog.Title>
+          <Dialog.ScrollArea>
+            <ScrollView contentContainerStyle={styles.form}>
+              <TextInput label="Food name" value={form.name} onChangeText={(name) => setForm({ ...form, name })} />
+              <View style={styles.row}>
+                <TextInput style={styles.flex} label="Serving" keyboardType="decimal-pad" value={form.quantity} onChangeText={(quantity) => setForm({ ...form, quantity })} />
+                <TextInput style={styles.flex} label="Unit" value={form.unit} onChangeText={(unit) => setForm({ ...form, unit })} />
+              </View>
+              <Divider />
+              <View style={styles.row}>
+                <TextInput style={styles.flex} label="Protein (g)" keyboardType="decimal-pad" value={form.protein} onChangeText={(protein) => setForm({ ...form, protein })} />
+                <TextInput style={styles.flex} label="Carbs (g)" keyboardType="decimal-pad" value={form.carbs} onChangeText={(carbs) => setForm({ ...form, carbs })} />
+              </View>
+              <View style={styles.row}>
+                <TextInput style={styles.flex} label="Fats (g)" keyboardType="decimal-pad" value={form.fats} onChangeText={(fats) => setForm({ ...form, fats })} />
+                <TextInput style={styles.flex} label="Calories (optional)" keyboardType="decimal-pad" value={form.calories} onChangeText={(calories) => setForm({ ...form, calories })} />
+              </View>
+              {validationError ? <Text style={styles.error}>{validationError}</Text> : null}
+            </ScrollView>
+          </Dialog.ScrollArea>
           <Dialog.Actions>
-            <Button onPress={() => setShowAddDialog(false)}>Cancel</Button>
-            <Button onPress={addCustomFood}>Add</Button>
+            <Button onPress={() => setDialogVisible(false)}>Cancel</Button>
+            <Button onPress={() => void submitCustomFood()}>Add to {mealType}</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  searchContainer: {
-    padding: 16,
-    backgroundColor: '#fff',
-    elevation: 2,
-  },
-  searchBar: {
-    marginBottom: 8,
-  },
-  addButton: {
-    marginTop: 8,
-  },
-  scrollView: {
-    flex: 1,
-    padding: 16,
-  },
-  card: {
-    marginBottom: 8,
-  },
-  foodHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  foodInfo: {
-    flex: 1,
-  },
-  foodName: {
-    fontSize: 18,
-    marginBottom: 4,
-  },
-  macroGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  macroItem: {
-    width: '50%',
-    marginBottom: 8,
-  },
-  macroLabel: {
-    fontSize: 12,
-    color: '#666',
-  },
-  macroValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  input: {
-    marginBottom: 16,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  quantityInput: {
-    flex: 2,
-    marginRight: 8,
-  },
-  unitInput: {
-    flex: 1,
-  },
-  macroInput: {
-    flex: 1,
-    marginRight: 8,
-  },
+  screen: { flex: 1, backgroundColor: theme.colors.background },
+  content: { padding: 16, paddingBottom: 32, gap: 14 },
+  muted: { color: theme.colors.onSurfaceVariant },
+  result: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  resultText: { flex: 1, gap: 4 },
+  empty: { alignItems: 'center', gap: 8 },
+  form: { paddingVertical: 16, gap: 12 },
+  row: { flexDirection: 'row', gap: 12 },
+  flex: { flex: 1 },
+  error: { color: theme.colors.error },
 });
 
 export default FoodSearchScreen;

@@ -1,193 +1,128 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Card, Title, Paragraph, ProgressBar, Button, FAB } from 'react-native-paper';
-import { MacroTotals, DailyLog } from '../types';
+import React from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import {
+  Button,
+  Card,
+  IconButton,
+  Surface,
+  Text,
+} from 'react-native-paper';
+import MacroProgress from '../components/MacroProgress';
+import { useApp } from '../context/AppContext';
+import { RootTabParamList } from '../navigation/types';
+import { colors, theme } from '../theme';
+import { MealType } from '../types';
+import { EMPTY_TOTALS, formatDate, getDateString } from '../utils/calculations';
 
-const HomeScreen = ({ navigation }: any) => {
-  const [dailyTotals, setDailyTotals] = useState<MacroTotals>({
-    protein: 0,
-    carbs: 0,
-    fats: 0,
-    calories: 0,
-  });
+type Props = BottomTabScreenProps<RootTabParamList, 'Today'>;
+const mealTypes: MealType[] = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 
-  const [goals] = useState({
-    protein: 150,
-    carbs: 200,
-    fats: 65,
-    calories: 2000,
-  });
-
-  const today = new Date().toISOString().split('T')[0];
-
-  useEffect(() => {
-    loadDailyTotals();
-  }, []);
-
-  const loadDailyTotals = async () => {
-    // TODO: Load from database
-    // For now, using mock data
-    setDailyTotals({
-      protein: 45,
-      carbs: 120,
-      fats: 25,
-      calories: 850,
-    });
-  };
-
-  const calculateProgress = (current: number, goal: number) => {
-    return Math.min(current / goal, 1);
-  };
+const HomeScreen = ({ navigation }: Props) => {
+  const { profile, removeLoggedFood, todayLog } = useApp();
+  const totals = todayLog ?? { ...EMPTY_TOTALS };
 
   return (
-    <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title>Today's Progress</Title>
-            <Paragraph style={styles.date}>{today}</Paragraph>
-            
-            <View style={styles.macroRow}>
-              <View style={styles.macroItem}>
-                <Paragraph style={styles.macroLabel}>Protein</Paragraph>
-                <Paragraph style={styles.macroValue}>
-                  {dailyTotals.protein}g / {goals.protein}g
-                </Paragraph>
-                <ProgressBar 
-                  progress={calculateProgress(dailyTotals.protein, goals.protein)} 
-                  color="#E91E63" 
-                  style={styles.progressBar}
-                />
-              </View>
-            </View>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      <View>
+        <Text variant="headlineMedium">Today</Text>
+        <Text variant="bodyMedium" style={styles.muted}>
+          {formatDate(getDateString())}
+        </Text>
+      </View>
 
-            <View style={styles.macroRow}>
-              <View style={styles.macroItem}>
-                <Paragraph style={styles.macroLabel}>Carbs</Paragraph>
-                <Paragraph style={styles.macroValue}>
-                  {dailyTotals.carbs}g / {goals.carbs}g
-                </Paragraph>
-                <ProgressBar 
-                  progress={calculateProgress(dailyTotals.carbs, goals.carbs)} 
-                  color="#2196F3" 
-                  style={styles.progressBar}
-                />
-              </View>
-            </View>
+      <Card mode="contained" style={styles.hero}>
+        <Card.Content style={styles.heroContent}>
+          <Text variant="labelLarge">Calories remaining</Text>
+          <Text variant="displaySmall">
+            {Math.max((profile?.caloriesGoal ?? 0) - totals.calories, 0).toFixed(0)}
+          </Text>
+          <Text variant="bodyMedium">
+            {Math.round(totals.calories)} consumed · {profile?.caloriesGoal ?? 0} goal
+          </Text>
+        </Card.Content>
+      </Card>
 
-            <View style={styles.macroRow}>
-              <View style={styles.macroItem}>
-                <Paragraph style={styles.macroLabel}>Fats</Paragraph>
-                <Paragraph style={styles.macroValue}>
-                  {dailyTotals.fats}g / {goals.fats}g
-                </Paragraph>
-                <ProgressBar 
-                  progress={calculateProgress(dailyTotals.fats, goals.fats)} 
-                  color="#FF9800" 
-                  style={styles.progressBar}
-                />
-              </View>
-            </View>
+      <Surface style={styles.progressCard} elevation={1}>
+        <MacroProgress label="Protein" current={totals.protein} goal={profile?.proteinGoal ?? 0} color={colors.protein} />
+        <MacroProgress label="Carbs" current={totals.carbs} goal={profile?.carbsGoal ?? 0} color={colors.carbs} />
+        <MacroProgress label="Fats" current={totals.fats} goal={profile?.fatsGoal ?? 0} color={colors.fats} />
+      </Surface>
 
-            <View style={styles.macroRow}>
-              <View style={styles.macroItem}>
-                <Paragraph style={styles.macroLabel}>Calories</Paragraph>
-                <Paragraph style={styles.macroValue}>
-                  {dailyTotals.calories} / {goals.calories}
-                </Paragraph>
-                <ProgressBar 
-                  progress={calculateProgress(dailyTotals.calories, goals.calories)} 
-                  color="#4CAF50" 
-                  style={styles.progressBar}
-                />
-              </View>
-            </View>
+      <View style={styles.sectionHeading}>
+        <Text variant="titleLarge">Daily log</Text>
+        <Button icon="plus" onPress={() => navigation.navigate('Add')}>Add food</Button>
+      </View>
+
+      {!todayLog?.entries.length ? (
+        <Card mode="outlined">
+          <Card.Content style={styles.empty}>
+            <Text variant="titleMedium">Nothing logged yet</Text>
+            <Text variant="bodyMedium" style={styles.muted}>
+              Add your first food to start tracking today.
+            </Text>
+            <Button mode="contained" onPress={() => navigation.navigate('Add')}>
+              Add food
+            </Button>
           </Card.Content>
         </Card>
-
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title>Quick Actions</Title>
-            <View style={styles.buttonRow}>
-              <Button 
-                mode="contained" 
-                onPress={() => navigation.navigate('Search')}
-                style={styles.button}
-              >
-                Add Food
-              </Button>
-              <Button 
-                mode="outlined" 
-                onPress={() => navigation.navigate('Meals')}
-                style={styles.button}
-              >
-                Quick Meals
-              </Button>
-            </View>
-          </Card.Content>
-        </Card>
-      </ScrollView>
-
-      <FAB
-        style={styles.fab}
-        icon="plus"
-        onPress={() => navigation.navigate('Search')}
-      />
-    </View>
+      ) : (
+        mealTypes.map((mealType) => {
+          const entries = todayLog.entries.filter(
+            (entry) => entry.mealType === mealType
+          );
+          if (!entries.length) return null;
+          return (
+            <Card mode="outlined" key={mealType}>
+              <Card.Content>
+                <Text variant="titleMedium">{mealType}</Text>
+                {entries.map((entry) => (
+                  <View style={styles.entry} key={entry.id}>
+                    <View style={styles.entryText}>
+                      <Text variant="bodyLarge">{entry.name}</Text>
+                      <Text variant="bodySmall" style={styles.muted}>
+                        {entry.quantity}{entry.unit} · {Math.round(entry.calories)} kcal
+                      </Text>
+                    </View>
+                    <IconButton
+                      icon="delete-outline"
+                      accessibilityLabel={`Remove ${entry.name}`}
+                      onPress={() => void removeLoggedFood(entry.id)}
+                    />
+                  </View>
+                ))}
+              </Card.Content>
+            </Card>
+          );
+        })
+      )}
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  scrollView: {
-    flex: 1,
-    padding: 16,
-  },
-  card: {
-    marginBottom: 16,
-  },
-  date: {
-    color: '#666',
-    marginBottom: 16,
-  },
-  macroRow: {
-    marginBottom: 16,
-  },
-  macroItem: {
-    flex: 1,
-  },
-  macroLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  macroValue: {
-    fontSize: 16,
-    marginBottom: 8,
-  },
-  progressBar: {
-    height: 8,
-    borderRadius: 4,
-  },
-  buttonRow: {
+  screen: { flex: 1, backgroundColor: theme.colors.background },
+  content: { padding: 16, paddingBottom: 32, gap: 16 },
+  muted: { color: theme.colors.onSurfaceVariant },
+  hero: { backgroundColor: theme.colors.primaryContainer },
+  heroContent: { gap: 4 },
+  progressCard: { padding: 20, borderRadius: 18, gap: 20 },
+  sectionHeading: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 16,
+    alignItems: 'center',
   },
-  button: {
-    flex: 1,
-    marginHorizontal: 4,
+  empty: { alignItems: 'center', paddingVertical: 24, gap: 12 },
+  entry: {
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.outlineVariant,
   },
-  fab: {
-    position: 'absolute',
-    margin: 16,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#6200EE',
-  },
+  entryText: { flex: 1 },
 });
-
-export default HomeScreen;
